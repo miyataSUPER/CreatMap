@@ -277,6 +277,22 @@ def get_csv_download_link(df):
     href = f'data:file/csv;base64,{b64}'
     return href
 
+def save_map_as_html(m):
+    """
+    地図をHTMLとして保存する
+    """
+    # 地図をHTMLとして一時的な文字列に保存
+    html_string = m._repr_html_()
+    
+    # HTMLをエンコード
+    b64 = base64.b64encode(html_string.encode()).decode()
+    
+    # ダウンロードリンクを作成
+    href = f'<a href="data:text/html;base64,{b64}" download="map.html">地図をHTMLとしてダウンロード</a>'
+    st.markdown(href, unsafe_allow_html=True)
+    
+    st.success('地図をHTMLとして保存しました。ダウンロードリンクをクリックしてください。')
+
 def main():
     st.title('企業周辺の場所リストと地図表示アプリ')
 
@@ -337,9 +353,9 @@ def main():
     if st.session_state.map:
         st.subheader('場所マップ')
         folium_static(st.session_state.map)
-
-        if st.button('地図を画像として保存'):
-            save_map_as_image(st.session_state.map)
+        
+        if st.button('地図をHTMLとして保存'):
+            save_map_as_html(st.session_state.map)
 
 if __name__ == '__main__':
     main()
