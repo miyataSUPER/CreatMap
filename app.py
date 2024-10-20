@@ -255,52 +255,54 @@ def main():
 
     place_types, place_types_jp = get_genres()
 
-    try:
-        location = get_location(gmaps, address)
-        if not location:
-            st.error('住所から位置情報を取得できませんでした。')
-            return
+    # 新たに実行ボタンを追加
+    if st.button('検索を実行'):
+        try:
+            location = get_location(gmaps, address)
+            if not location:
+                st.error('住所から位置情報を取得できませんでした。')
+                return
 
-        lat, lng = location
-        st.success(f'企業の位置を取得しました。緯度: {lat}, 経度: {lng}')
+            lat, lng = location
+            st.success(f'企業の位置を取得しました。緯度: {lat}, 経度: {lng}')
 
-        places = get_nearby_places(gmaps, location, place_types)
-        if not places:
-            st.warning(f'半径500m以内に選択されたジャンルの場所が見つかりませんでした。')
-            return
+            places = get_nearby_places(gmaps, location, place_types)
+            if not places:
+                st.warning(f'半径500m以内に選択されたジャンルの場所が見つかりませんでした。')
+                return
 
-        # 進捗状況を表示するプログレスバーを追加
-        progress_bar = st.progress(0)
-        total_places = len(places)
-        place_list = create_place_list(gmaps, places)
-        progress_bar.progress(1.0)
+            # 進捗状況を表示するプログレスバーを追加
+            progress_bar = st.progress(0)
+            total_places = len(places)
+            place_list = create_place_list(gmaps, places)
+            progress_bar.progress(1.0)
 
-        st.subheader('場所リスト')
+            st.subheader('場所リスト')
 
-        # 表示用のデータフレームを作成（緯度・経度を除外）
-        df = pd.DataFrame(place_list)
-        df_display = df.drop(columns=['緯度', '経度'])
-        st.table(df_display)
+            # 表示用のデータフレームを作成（緯度・経度を除外）
+            df = pd.DataFrame(place_list)
+            df_display = df.drop(columns=['緯度', '経度'])
+            st.table(df_display)
 
-        # CSVダウンロードボタン
-        csv = df_display.to_csv(index=False).encode('utf-8-sig')
-        st.download_button(
-            label='リストをCSVとしてダウンロード',
-            data=csv,
-            file_name='場所リスト.csv',
-            mime='text/csv'
-        )
+            # CSVダウンロードボタン
+            csv = df_display.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label='リストをCSVとしてダウンロード',
+                data=csv,
+                file_name='場所リスト.csv',
+                mime='text/csv'
+            )
 
-        m = create_map(lat, lng, place_list)
+            m = create_map(lat, lng, place_list)
 
-        st.subheader('場所マップ')
-        folium_static(m)
+            st.subheader('場所マップ')
+            folium_static(m)
 
-        if st.button('地図を画像として保存'):
-            save_map_as_image(m)
+            if st.button('地図を画像として保存'):
+                save_map_as_image(m)
 
-    except Exception as e:
-        st.error(f'エラーが発生しました: {e}')
+        except Exception as e:
+            st.error(f'エラーが発生しました: {e}')
 
 if __name__ == '__main__':
     main()
