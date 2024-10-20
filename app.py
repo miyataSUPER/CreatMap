@@ -2,13 +2,13 @@ import streamlit as st
 import googlemaps
 import folium
 from streamlit_folium import folium_static
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
 import pandas as pd
 import base64
+from PIL import Image
+import io
+import imgkit
 
 def get_api_key():
     """Google Maps APIキーを取得する"""
@@ -110,7 +110,7 @@ def create_place_list(gmaps, places):
     for idx, place in enumerate(places):
         # 各店舗の詳細情報を取得
         opening_hours = get_place_details(gmaps, place['place_id'])
-        time.sleep(0.1)  # API利���制限を考慮して遅延を追加
+        time.sleep(0.1)  # API利制限を考慮して遅延を追加
 
         weekday_text = opening_hours.get('weekday_text', [])
 
@@ -223,23 +223,52 @@ def save_map_as_image(m):
     """
     地図を画像として保存する
     """
-    m.save('map.html')
+    # 地図をHTMLとして一時ファイルに保存
+    m.save('temp_map.html')
 
-    options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=800,600')
+    # HTMLをPNGに変換
+    img_data = html_to_png('temp_map.html')
 
-    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
-    driver.get('file://' + os.path.abspath('map.html'))
+    # 一時ファイルを削除
+    os.remove('temp_map.html')
 
-    time.sleep(5)  # 地図の読み込みを待機
+    # 画像データをStreamlitで表示
+    st.image(img_data, caption='地図の画像', use_column_width=True)
 
-    driver.save_screenshot('map.png')
-    driver.quit()
+    # 画像データをダウンロード可能にする
+    b64 = base64.b64encode(img_data).decode()
+    href = f'<a href="data:image/png;base64,{b64}" download="map.png">地図をPNGとしてダウンロード</a>'
+    st.markdown(href, unsafe_allow_html=True)
 
-    st.image('map.png', caption='地図の画像', use_column_width=True)
     st.success('地図を画像として保存しました。')
+
+def html_to_png(html_file):
+    """
+    HTMLファイルをPNG画像に変換する
+    """
+    # HTMLを文字列として読み込む
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_string = f.read()
+
+    # HTMLを画像に変換
+    img_data = html_to_image(html_string)
+
+    return img_data
+
+def html_to_image(html_string):
+    """
+    HTML文字列を画像データに変換する
+    """
+    # この関数の実装は、使用するライブラリによって異なります
+    # 以下は例として、imgkitを使用した場合の実装です
+
+    # imgkitの設定
+    config = imgkit.config(wkhtmltoimage='path/to/wkhtmltoimage')
+
+    # HTML文字列を画像データに変換
+    img_data = imgkit.from_string(html_string, False, config=config)
+
+    return img_data
 
 def get_csv_download_link(df):
     """データフームからCSVダウンロードリンクを生成する"""
