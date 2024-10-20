@@ -8,6 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
 import pandas as pd
+import base64
 
 def get_api_key():
     """Google Maps APIキーを取得する"""
@@ -240,24 +241,40 @@ def save_map_as_image(m):
     st.image('map.png', caption='地図の画像', use_column_width=True)
     st.success('地図を画像として保存しました。')
 
+def get_csv_download_link(df):
+    """データフ��ームからCSVダウンロードリンクを生成する"""
+    csv = df.to_csv(index=False).encode('utf-8-sig')
+    b64 = base64.b64encode(csv).decode()
+    href = f'data:file/csv;base64,{b64}'
+    return href
+
 def main():
     st.title('企業周辺の場所リストと地図表示アプリ')
 
-    api_key = get_api_key()
-    if not api_key:
-        return
+    # セッション状態の初期化
+    if 'api_key' not in st.session_state:
+        st.session_state.api_key = ''
+    if 'address' not in st.session_state:
+        st.session_state.address = ''
+    if 'place_types' not in st.session_state:
+        st.session_state.place_types = []
+    if 'place_list' not in st.session_state:
+        st.session_state.place_list = None
+    if 'map' not in st.session_state:
+        st.session_state.map = None
 
-    gmaps = googlemaps.Client(key=api_key)
+    api_key = st.text_input('Google Maps APIキーを入力してください', value=st.session_state.api_key, type='password')
+    st.session_state.api_key = api_key
 
-    address = get_address()
-    if not address:
-        return
+    address = st.text_input('企業の住所を入力してください', value=st.session_state.address)
+    st.session_state.address = address
 
     place_types, place_types_jp = get_genres()
+    st.session_state.place_types = place_types
 
-    # 新たに実行ボタンを追加
     if st.button('検索を実行'):
         try:
+            gmaps = googlemaps.Client(key=api_key)
             location = get_location(gmaps, address)
             if not location:
                 st.error('住所から位置情報を取得できませんでした。')
@@ -271,38 +288,27 @@ def main():
                 st.warning(f'半径500m以内に選択されたジャンルの場所が見つかりませんでした。')
                 return
 
-            # 進捗状況を表示するプログレスバーを追加
             progress_bar = st.progress(0)
-            total_places = len(places)
-            place_list = create_place_list(gmaps, places)
+            st.session_state.place_list = create_place_list(gmaps, places)
             progress_bar.progress(1.0)
 
-            st.subheader('場所リスト')
+            st.session_state.map = create_map(lat, lng, st.session_state.place_list)
 
-            # 表示用のデータフレームを作成（緯度・経度を除外）
-            df = pd.DataFrame(place_list)
-            df_display = df.drop(columns=['緯度', '経度'])
-            st.table(df_display)
+    if st.session_state.place_list:
+        st.subheader('場所リスト')
+        df = pd.DataFrame(st.session_state.place_list)
+        df_display = df.drop(columns=['緯度', '経度'])
+        st.table(df_display)
 
-            # CSVダウンロードボタン
-            csv = df_display.to_csv(index=False).encode('utf-8-sig')
-            st.download_button(
-                label='リストをCSVとしてダウンロード',
-                data=csv,
-                file_name='場所リスト.csv',
-                mime='text/csv'
-            )
+        csv_link = get_csv_download_link(df_display)
+        st.markdown(f'<a href="{csv_link}" download="場所リスト.csv">リストをCSVとしてダウンロード</a>', unsafe_allow_html=True)
 
-            m = create_map(lat, lng, place_list)
+    if st.session_state.map:
+        st.subheader('場所マップ')
+        folium_static(st.session_state.map)
 
-            st.subheader('場所マップ')
-            folium_static(m)
-
-            if st.button('地図を画像として保存'):
-                save_map_as_image(m)
-
-        except Exception as e:
-            st.error(f'エラーが発生しました: {e}')
+        if st.button('地図を画像として保存'):
+            save_map_as_image(st.session_state.map)
 
 if __name__ == '__main__':
     main()
