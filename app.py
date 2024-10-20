@@ -110,7 +110,7 @@ def create_place_list(gmaps, places):
     for idx, place in enumerate(places):
         # 各店舗の詳細情報を取得
         opening_hours = get_place_details(gmaps, place['place_id'])
-        time.sleep(0.1)  # API利用制限を考慮して遅延を追加
+        time.sleep(0.1)  # API利���制限を考慮して遅延を追加
 
         weekday_text = opening_hours.get('weekday_text', [])
 
@@ -242,7 +242,7 @@ def save_map_as_image(m):
     st.success('地図を画像として保存しました。')
 
 def get_csv_download_link(df):
-    """データフ��ームからCSVダウンロードリンクを生成する"""
+    """データフームからCSVダウンロードリンクを生成する"""
     csv = df.to_csv(index=False).encode('utf-8-sig')
     b64 = base64.b64encode(csv).decode()
     href = f'data:file/csv;base64,{b64}'
@@ -293,6 +293,8 @@ def main():
             progress_bar.progress(1.0)
 
             st.session_state.map = create_map(lat, lng, st.session_state.place_list)
+        except Exception as e:
+            st.error(f'エラーが発生しました: {str(e)}')
 
     if st.session_state.place_list:
         st.subheader('場所リスト')
